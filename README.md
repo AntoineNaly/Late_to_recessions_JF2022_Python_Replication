@@ -211,7 +211,7 @@ These corrections restore pre-COVID recession identification but do not fully re
 
 The figure below replicates Figure 1 of the paper. The top panel shows the filtered posterior recession probability $\Pr(s_t = 0 \mid \mathcal{F}_T)$ alongside NBER recession shading. The bottom panel shows the posterior median of the common growth factor $\hat{z}_t$.
 
-![Posterior recession probability and common growth factor](StateBusinessCycle/fig1_recession_prob.png)
+![Posterior recession probability and common growth factor](Python_Version/StateBusinessCycle/fig1_recession_prob.png)
 
 The model successfully identifies all major NBER recessions, with the recession probability rising sharply at each turning point. The timing and shape closely match Figure 1 in the published paper, though — as discussed in Section 3 — results depend on the inclusion of financial variables not described in the original text.
 
@@ -221,7 +221,7 @@ The model successfully identifies all major NBER recessions, with the recession 
 
 The figure below replicates Figure 2 of the paper, showing the model-implied one-month-ahead expected excess equity return over the full sample.
 
-![One-month-ahead expected excess equity return](ExpectedReturnMeasure/fig2_expected_return.png)
+![One-month-ahead expected excess equity return](Python_Version/ExpectedReturnMeasure/fig2_expected_return.png)
 
 The V-shape pattern documented in the paper — negative expected returns at the onset of recessions, followed by a sharp reversal — is clearly visible around each NBER recession date, consistent with the paper's core finding.
 
@@ -233,11 +233,11 @@ The table below compares the posterior distribution from this replication (draws
 
 | Parameter | Description | 5% (repl.) | Median (repl.) | 95% (repl.) | 5% (paper) | Median (paper) | 95% (paper) |
 |-----------|-------------|:-:|:-:|:-:|:-:|:-:|:-:|
-| $\mu_0$ | Recession regime mean | 0.00516 | 0.00532 | 0.00548 | 0.0053 | 0.0065 | 0.0076 |
-| $\phi_z$ | Factor AR(1) persistence | 0.9684 | 0.9701 | 0.9717 | 0.958 | 0.970 | 0.982 |
-| $\text{corr}_s$ | Regime correlation | −0.9449 | −0.9308 | −0.9031 | −0.984 | −0.955 | −0.926 |
-| $\gamma_1$ | Loading, series 1 | 0.00865 | 0.01577 | 0.02219 | 0.006 | 0.009 | 0.015 |
-| $\gamma_2$ | Loading, series 2 | 0.15371 | 0.15696 | 0.15952 | 0.093 | 0.149 | 0.181 |
+| $\mu_0$ | Recession regime mean | 0.0052 | 0.0053 | 0.0055 | 0.0053 | 0.0065 | 0.0076 |
+| $\phi_z$ | Factor AR(1) persistence | 0.9684 | 0.9701 | 0.9717 | 0.9580 | 0.9700 | 0.9820 |
+| $\text{corr}_s$ | Regime correlation | −0.9449 | −0.9308 | −0.9031 | −0.9840 | −0.9550 | −0.9260 |
+| $\gamma_1$ | Loading, series 1 | 0.0087 | 0.0158 | 0.0222 | 0.0060 | 0.0090 | 0.0150 |
+| $\gamma_2$ | Loading, series 2 | 0.1537 | 0.1570 | 0.1595 | 0.0930 | 0.1490 | 0.1810 |
 
 The persistence parameter $\phi_z$ and the regime correlation align closely with the paper's posterior. The factor AR persistence sits well within the paper's credible interval. The somewhat lower $\mu_0$ likely reflects differences in sample composition or data vintage driven by the undisclosed use of financial series.
 
