@@ -1,0 +1,12 @@
+# Windows system files
+desktop.ini
+Thumbs.db
+$RECYCLE.BIN/
+
+# Python cache
+__pycache__/
+*.py[cod]
+.numba_cache/
+
+Python_Version/StateBusinessCycle/Functions/fail/
+Python_Version/StateBusinessCycle/Functions/output/
