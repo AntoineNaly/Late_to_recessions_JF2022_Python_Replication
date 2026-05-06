@@ -260,6 +260,12 @@ The figure below replicates Figure 2 of the paper, showing the model-implied one
 
 The V-shape pattern documented in the paper — negative expected returns at the onset of recessions, followed by a sharp reversal — is clearly visible around each NBER recession date, consistent with the paper's core finding.
 
+For comparison, the figure below shows the same estimation using macroeconomic variables only (series 1–6 and 13–15), excluding the six financial variables (series 7–12).
+
+![One-month-ahead expected excess equity return — macroeconomic variables only](Python_Version/ExpectedReturnMeasure/fig2_expected_return_macro_vars_only.png)
+
+Without the financial variables, expected returns fall less quickly at the onset of recessions — consistent with the delayed recession signal documented in Section 5.1. Overall, however, the model still delivers broadly consistent results: the V-shape pattern remains visible, suggesting the return predictability finding primarily relies on macro variables.
+
 ---
 
 ### 5.3 Posterior Parameter Estimates vs. Table IV
