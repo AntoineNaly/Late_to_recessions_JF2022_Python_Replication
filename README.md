@@ -71,7 +71,7 @@ Separately from the business cycle identification, the paper estimates a predict
 
 $$r_{t+1}^e = \alpha + \beta\, \hat{z}_t + \delta\, \hat{z}_{t-1} + \epsilon_{t+1}$$
 
-where $\hat{z}_t$ is the posterior median of the common growth factor. The sign and magnitude of $\beta$ across regimes — negative early in recessions, strongly positive thereafter — is the paper's central empirical finding.
+where $\hat{z}_t$ is the posterior median of the common growth factor. The dependent variable $r_{t+1}^e$ is the U.S. market excess return (Rm−Rf) from the [Kenneth R. French Data Library](https://mba.tuck.dartmouth.edu/pages/faculty/ken.french/data_library.html). The sign and magnitude of $\beta$ across regimes — negative early in recessions, strongly positive thereafter — is the paper's central empirical finding.
 
 ---
 
@@ -81,7 +81,7 @@ where $\hat{z}_t$ is the posterior median of the common growth factor. The sign 
 
 The author provides a MATLAB dataset for replication but does not document its contents. Through systematic correlation analysis against public data sources, the following 15 series were identified. Correlations are computed over the author's 1950–2019 sample on z-scored series.
 
-| # | Series | Correlation (1950–2019) | n | Sig. |
+| # | Series | Correlation (Jan 1950–Dec 2019) | n | Sig. |
 |---|--------|------------------------|---|------|
 | 1 | Industrial Production (SA, Log MoM, Last Vintage) | +1.0000 | 835 | *** |
 | 2 | Non-Farm Payrolls (SA, Log MoM, Real-Time) | +0.9842 | 838 | *** |
@@ -230,7 +230,7 @@ large $\kappa_t$ drives $K_t \to 0$, causing the filter to coast on the transiti
 | 2022 | 1.7 | 1/1.7th of normal |
 | All other periods | 1.000 | Full weight |
 
-These corrections restore pre-COVID recession identification but do not fully resolve the fundamental incompatibility between a time-invariant Gaussian model and structural breaks of this magnitude. Results for the extended sample are therefore not conclusive.
+These corrections only partly restore pre-COVID recession identification. The fundamental incompatibility between a time-invariant Gaussian model and structural breaks of this magnitude remains. Results for the extended sample (adding the 2020–latest date period) are therefore inconclusive.
 
 ---
 
@@ -243,6 +243,12 @@ The figure below replicates Figure 1 of the paper. The top panel shows the filte
 ![Posterior recession probability and common growth factor](Python_Version/StateBusinessCycle/fig1_recession_prob.png)
 
 The model successfully identifies all major NBER recessions, with the recession probability rising sharply at each turning point. The timing and shape closely match Figure 1 in the published paper, though — as discussed in Section 3 — results depend on the inclusion of financial variables not described in the original text.
+
+For comparison, the figure below shows the same estimation run on macroeconomic series only (series 1–6 and 13–15), excluding the six financial variables: S&P 500 log return, 10Y–2Y Treasury spread, TED spread, BAA–AAA credit spread, 10Y breakeven inflation, and VIX (series 7–12).
+
+![Posterior recession probability — macroeconomic variables only](Python_Version/StateBusinessCycle/fig1_recession_prob_macro_vars_only.png)
+
+Removing the financial series noticeably delays the model's recession signal at several turning points. This is expected: financial prices are forward-looking and embed market participants' expectations about future economic conditions, so they lead the macroeconomic data. Their inclusion materially improves the timeliness of the recession indicator — which makes their absence from the paper's description all the more noteworthy.
 
 ---
 
@@ -269,23 +275,6 @@ The table below compares the posterior distribution from this replication (draws
 | $\gamma_2$ | Loading, series 2 | 0.1537 | 0.1570 | 0.1595 | 0.0930 | 0.1490 | 0.1810 |
 
 The persistence parameter of the common growth factor $\phi_z$ and the regime correlation align closely with the paper's posterior. The factor AR persistence sits well within the paper's credible interval. The somewhat lower $\mu_0$ likely reflects minor differences in raw data vintages for the last-vintage series (Industrial Production, Real Private Income, Initial Claims) and the imperfect replication of the YoY equity returns series (correlation 0.82 with S&P 500), both of which affect the recession regime mean estimate.
-
----
-
-## Citation
-
-```bibtex
-@article{gomezcram2022,
-  author  = {Gómez-Cram, Roberto},
-  title   = {Late to Recessions: Stocks and the Business Cycle},
-  journal = {Journal of Finance},
-  year    = {2022},
-  volume  = {77},
-  number  = {2},
-  pages   = {923--966},
-  doi     = {10.1111/jofi.13100}
-}
-```
 
 ---
 
