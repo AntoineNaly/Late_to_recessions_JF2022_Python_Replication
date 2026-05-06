@@ -81,23 +81,23 @@ where $\hat{z}_t$ is the posterior median of the common growth factor. The depen
 
 The author provides a MATLAB dataset for replication but does not document its contents. Through systematic correlation analysis against public data sources, the following 15 series were identified. Correlations are computed over the author's 1950–2019 sample on z-scored series.
 
-| # | Series | Correlation (Jan 1950–Dec 2019) | n | Sig. |
-|---|--------|------------------------|---|------|
-| 1 | Industrial Production (SA, Log MoM, Last Vintage) | +1.0000 | 835 | *** |
-| 2 | Non-Farm Payrolls (SA, Log MoM, Real-Time) | +0.9842 | 838 | *** |
-| 3 | PCE (SA, Log MoM, Real-Time) | +0.9706 | 635 | *** |
-| 4 | Real Private Income ex. Transfers (SA, Log MoM, Last Vintage) | +0.9928 | 731 | *** |
-| 5 | Aggregate Weekly Hours (SA, Log MoM, Philly Fed RT) | +0.9024 | 623 | *** |
-| 6 | Initial Claims (SA, Log, 11m negated, Last Vintage) | +0.9992 | 625 | *** |
-| 7 | S&P 500 (Log YoY) | +0.8226 | 839 | *** |
-| 8 | 10Y–2Y Treasury Spread | +1.0000 | 523 | *** |
-| 9 | TED Spread (negated) | +1.0000 | 408 | *** |
-| 10 | BAA–AAA Spread (negated) | +0.9999 | 408 | *** |
-| 11 | 10Y Breakeven Inflation | +1.0000 | 204 | *** |
-| 12 | VIX (negated) | +1.0000 | 360 | *** |
-| 13 | Nominal GDP (SA, Log QoQ, Real-Time) | +0.9890 | 279 | *** |
-| 14 | Nominal Residential Fixed Investment (SA, Log QoQ, Real-Time) | +0.9937 | 274 | *** |
-| 15 | Nominal Non-Residential Fixed Investment (SA, Log QoQ, Real-Time) | +0.9891 | 274 | *** |
+| # | Series | Correlation (Jan 1950–Dec 2019) | n |
+|---|--------|------------------------|---|
+| 1 | Industrial Production (SA, Log MoM, Last Vintage) | +1.0000*** | 835 |
+| 2 | Non-Farm Payrolls (SA, Log MoM, Real-Time) | +0.9842*** | 838 |
+| 3 | PCE (SA, Log MoM, Real-Time) | +0.9706*** | 635 |
+| 4 | Real Private Income ex. Transfers (SA, Log MoM, Last Vintage) | +0.9928*** | 731 |
+| 5 | Aggregate Weekly Hours (SA, Log MoM, Philly Fed RT) | +0.9024*** | 623 |
+| 6 | Initial Claims (SA, Log, 11m negated, Last Vintage) | +0.9992*** | 625 |
+| 7 | S&P 500 (Log YoY) | +0.8226*** | 839 |
+| 8 | 10Y–2Y Treasury Spread | +1.0000*** | 523 |
+| 9 | TED Spread (negated) | +1.0000*** | 408 |
+| 10 | BAA–AAA Spread (negated) | +0.9999*** | 408 |
+| 11 | 10Y Breakeven Inflation | +1.0000*** | 204 |
+| 12 | VIX (negated) | +1.0000*** | 360 |
+| 13 | Nominal GDP (SA, Log QoQ, Real-Time) | +0.9890*** | 279 |
+| 14 | Nominal Residential Fixed Investment (SA, Log QoQ, Real-Time) | +0.9937*** | 274 |
+| 15 | Nominal Non-Residential Fixed Investment (SA, Log QoQ, Real-Time) | +0.9891*** | 274 |
 
 *\*\*\* p < 0.01. Series 4 correlation is post-correction for the Microsoft special dividend artifact (see Section 4.5).*
 
@@ -270,7 +270,7 @@ Without the financial variables, expected returns fall less quickly at the onset
 
 ### 5.3 Posterior Parameter Estimates vs. Table IV
 
-The table below compares the posterior distribution from this replication (draws 15,001–25,000 after burn-in discarded) against the published Table IV. Parameter notation follows the paper directly.
+The table below compares the posterior distribution from this replication (draws 15,001–25,000 after burn-in discarded) using all macro and financial varialbes, against the published Table IV. Parameter notation follows the paper directly.
 
 | Parameter | Description | 5% (repl.) | Median (repl.) | 95% (repl.) | 5% (paper) | Median (paper) | 95% (paper) |
 |-----------|-------------|:-:|:-:|:-:|:-:|:-:|:-:|
