@@ -55,7 +55,7 @@ The joint filter alternates between these two steps at each observation, produci
 
 ### 2.2 Bayesian Estimation with Conjugate Priors
 
-The model is estimated via Bayesian MCMC (Gibbs sampling). The two latent states are drawn using different algorithms: the continuous factor $z_t$ is drawn via Forward Filtering, Forward Sampling (FFFS) — at each step $t$ a draw $z_t \sim \mathcal{N}(\hat{z}_{t \mid t},\, P_{t \mid t})$ is taken from the filtered distribution using data up to $t$ only; the discrete regime $S_t$ is drawn via the Carter-Kohn backward simulation smoother applied to the Hamilton filter output, sampling the full path $S_{1:T}$ backward from $T$ to $1$ conditioning on future regime draws.
+The model is estimated via Bayesian MCMC (Gibbs sampling). The two latent states are drawn using different algorithms: the continuous factor z_t is drawn via Forward Filtering, Forward Sampling (FFFS) — at each step t a draw from 𝒩(ẑ_{t|t}, P_{t|t}) is taken from the filtered distribution using data up to t only; the discrete regime $S_t$ is drawn via the Carter-Kohn backward simulation smoother applied to the Hamilton filter output, sampling the full path $S_{1:T}$ backward from $T$ to $1$ conditioning on future regime draws.
 
 A particularly noteworthy methodological choice is the use of loose, conjugate priors throughout:
 
@@ -71,7 +71,7 @@ Separately from the business cycle identification, the paper estimates a predict
 
 $$r_{t+1}^e = \alpha + \beta\, \hat{z}_t + \delta\, \hat{z}_{t-1} + \epsilon_{t+1}$$
 
-where $\hat{z}_{t}$ is the posterior median of the common growth factor. The dependent variable $r_{t+1}^{e}$ is the U.S. market excess return (Rm−Rf) from the [Kenneth R. French Data Library](https://mba.tuck.dartmouth.edu/pages/faculty/ken.french/data_library.html). The sign and magnitude of $\beta$ across regimes — negative early in recessions, strongly positive thereafter — is the paper's central empirical finding.
+where ẑ_t is the posterior median of the common growth factor. The dependent variable r_{t+1}^e is the U.S. market excess return (Rm−Rf) from the [Kenneth R. French Data Library](https://mba.tuck.dartmouth.edu/pages/faculty/ken.french/data_library.html). The sign and magnitude of $\beta$ across regimes — negative early in recessions, strongly positive thereafter — is the paper's central empirical finding.
 
 ---
 
