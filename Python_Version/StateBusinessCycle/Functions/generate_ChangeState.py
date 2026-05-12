@@ -42,17 +42,21 @@ def generate_change_state(S_T: np.ndarray, states: np.ndarray | list[int]):
         Matrix where entry (i,j) is the count of transitions
         state_i -> state_j.
     """
-    S_T = np.asarray(S_T).reshape(-1)
-    states = np.asarray(states).reshape(-1)
-    m = len(states)
+    S_T    = np.asarray(S_T,    dtype=np.int64).reshape(-1)
+    states = np.asarray(states, dtype=np.int64).reshape(-1)
+    m      = int(len(states))
 
-    change_state = np.zeros((m, m), dtype=float)
+    # Map state labels to 0-based indices.
+    # Caller passes states = [1, 2], so subtracting states[0] maps 1→0, 2→1.
+    s_min = int(states[0])
+    s0 = S_T[:-1] - s_min    # previous state, 0-indexed, shape (T-1,)
+    s1 = S_T[1:]  - s_min    # next     state, 0-indexed, shape (T-1,)
 
-    for t in range(1, len(S_T)):
-        st_prev = int(S_T[t - 1])
-        st_now = int(S_T[t])
-        i = np.where(states == st_prev)[0][0]
-        j = np.where(states == st_now)[0][0]
-        change_state[i, j] += 1.0
+    # Encode each (prev, next) pair as a scalar index: prev*m + next.
+    # np.bincount then counts how many times each pair occurs — the
+    # sufficient statistic for the Beta posterior on the transition
+    # probabilities p = P(stay in recession) and q = P(stay in expansion).
+    pairs  = s0 * m + s1                              # shape (T-1,)
+    counts = np.bincount(pairs, minlength=m * m)      # shape (m*m,)
 
-    return change_state
+    return counts.reshape(m, m).astype(float)

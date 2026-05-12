@@ -3,16 +3,15 @@
 """
 get_coefficients_sv.py
 ----------------------
-Builds the state-space representation for the macroeconomic block defined by
-equations (IA.13)–(IA.16) of the Internet Appendix:
+Builds the compact state-space representation for the macroeconomic block
+defined by equations (IA.13)–(IA.16) of the Internet Appendix:
 
     Measurement:  y_t   = A_t (H0 + H1 * x_t + e_t),   Var(e_t) = RR   (IA.13)
     Transition:   x_t   = F0_t + F1 * x_{t-1} + v_t,   Var(v_t) = Q_t  (IA.14)
 
 The observables y_t are the pre-whitened macro series y*_{i,t} (see below).
-A_t is a time-varying selection matrix that accounts for which variables are
-observable at time t: at quarter-end months it selects both monthly and
-quarterly rows (A_last); at other months it selects only monthly rows (A_NotLast).
+A_t is a time-varying selection matrix: at quarter-end months it selects both
+monthly and quarterly rows (A_last); at other months only monthly rows (A_NotLast).
 
 State vector x_{t+1} (length nDim = 6 + N_m + N_q*tau):
     [z_t, z_{t-1}, z_{t-2}, z_{t-3}, z_{t-4}, z_{t-5},   <- 6 lags of common growth z
@@ -26,15 +25,37 @@ Key design notes:
     γ_i and on its own idiosyncratic component e_{i,t}.
   - Equation (15): e_{i,t} follows an AR(1) with coefficient ψ_i.  The AR(1)
     structure is absorbed into H1 and the pre-whitened data Ystar; F1 only
-    contains the companion form for the 6 z-lags.
+    contains the companion form for the 6 z-lags.  F1 rows 6+ are therefore
+    zero: the idiosyncratic states are driven entirely by their noise Q_i
+    and the Kalman update, with no AR carry-over through F1.
   - Equation (17) / (IA.16): quarterly observables are time-aggregated monthly
-    values with Mariano–Murasawa weights [1,2,3,2,1]/3.  This is encoded in
-    the kron block of A_last and in H1_macro_q.
+    values with Mariano–Murasawa weights [1,2,3,2,1]/3, encoded in A_last
+    and in the z-loading block H1_macro_q.
   - Quarterly AR(1) pre-whitening uses a lag-3 difference (quarterly frequency)
     to match the observed quarterly growth rate.
   - Ystar_m drops 2 extra rows so both Ystar_m and Ystar_q have T-3 rows,
     giving Tstar = T-3.
   - F0_t and Q_t are built at full length then trimmed to Tstar columns/slices.
+
+What is returned
+----------------
+The Kalman filter in generate_xt_sv maintains only the 6-dim z-factor state
+[z_t, z_{t-1}, ..., z_{t-5}] and its 6×6 covariance Pt_zz.  This is valid
+because F1 rows 6+ are zero, so at the prediction step:
+    Phat = F1 @ Pt @ F1.T + Q
+is non-zero only in the 6×6 z-factor block (rows/cols 0–5).  The idiosyncratic
+block resets to diag(SIG2_i) at every prediction step — their contribution to
+the innovation covariance Ft is therefore the diagonal term
+    H1_e @ diag(SIG2_i) @ H1_e.T = diag(Q_e_sel)
+where Q_e_sel[i] is the idiosyncratic variance for observable i.
+
+This function therefore returns:
+    H1_z_AL, H1_z_NL : z-factor columns of A_t @ H1   (eq. IA.13)
+    Q_e_sel_AL, _NL  : per-observable idiosyncratic Q  (diagonal of H1_e @ Phat_ee @ H1_e.T)
+    Q_z              : common-factor noise σ²_{z,0}    (= Sigma2_0_cc, hardcoded to 1.0)
+    F0_z             : z-factor row of F0_t             (μ_z(S_{t+1}) - φ_z μ_z(S_t), eq. 14)
+    Ystar_m, Ystar_q : pre-whitened data                (eq. IA.15)
+    nan_mask_m, _q   : True = valid (non-NaN) observation at each (t, variable)
 """
 
 import numpy as np
@@ -55,11 +76,11 @@ def get_coefficients_sv(
     s_t          : (T,) ndarray      – regime indicator (0=expansion, 1=recession)
     param_macro_MH : dict
         Keys: 'paramMU'      – (2,) array [mu_0, mu_1]
-              'Sigma2_0_cc'  – float
-              'h_cc'         – float
-              'phi_cc'       – float
+              'Sigma2_0_cc'  – float  (σ²_{z,0}, always 1.0)
+              'h_cc'         – float  (h_z, always 0.0)
+              'phi_cc'       – float  (φ_z, AR(1) persistence of z_t)
     param_macro_gibbs : dict
-        Keys: 'gamma_macro_m'   – (N_m+3,) array  [first N_m-1 scalars, then 4 for last var]
+        Keys: 'gamma_macro_m'   – (N_m+3,) array  [N_m-1 scalars, then 4 for last var]
               'psi_macro_m'     – (N_m,) array
               'SIG2_i_macro_m'  – (N_m,) array
               'gamma_macro_q'   – (N_q,) array
@@ -68,16 +89,22 @@ def get_coefficients_sv(
 
     Returns
     -------
-    Ystar      : (Tstar, N_m+N_q) ndarray   pre-whitened stacked observations
-    H0         : (nStates_Y, 1) ndarray
-    H1         : (nStates_Y, nDim) ndarray
-    RR         : (nStates_Y, nStates_Y) ndarray  (all zeros)
-    F0_t       : (nDim, Tstar) ndarray           time-varying transition intercept
-    F1         : (nDim, nDim) ndarray            transition matrix
-    Q_t        : (nDim, nDim, Tstar) ndarray     time-varying innovation covariance
-    A_select   : dict  {'A_last': ..., 'A_NotLast': ...}
-    Ystar_m    : (Tstar, N_m) ndarray
-    Ystar_q    : (Tstar, N_q) ndarray
+    dict with keys:
+        'F0_z'        : (Tstar,)       z-factor intercept F0_t[0, :] from eq. (14)
+        'H1_z_AL'     : (N_m+N_q, 6)  z-loadings A_last @ H1[:, 0:6]  (eq. IA.13)
+        'H1_z_NL'     : (N_m,     6)  z-loadings A_NotLast @ H1[:, 0:6]
+        'Q_e_sel_AL'  : (N_m+N_q,)    idiosyncratic Q per observable, quarter-end
+        'Q_e_sel_NL'  : (N_m,)        idiosyncratic Q per observable, non-quarter-end
+        'Q_z'         : float          σ²_{z,0} = Sigma2_0_cc (hardcoded 1.0)
+        'phi_cc'      : float          φ_z
+        'Ystar_m'     : (Tstar, N_m)   pre-whitened monthly data  (eq. IA.15)
+        'Ystar_q'     : (Tstar, N_q)   pre-whitened quarterly data
+        'nan_mask_m'  : (Tstar, N_m)   bool, True = valid observation
+        'nan_mask_q'  : (Tstar, N_q)   bool
+        'Tstar'       : int            T - 3
+        'mdim'        : int            6 + N_m + N_q*tau
+        'N_m'         : int
+        'N_q'         : int
     """
 
     yy_monthly   = np.asarray(yy_monthly,   dtype=float)
@@ -102,224 +129,146 @@ def get_coefficients_sv(
     SIG2_i_macro_q = np.asarray(param_macro_gibbs["SIG2_i_macro_q"], dtype=float).reshape(-1)
 
     paramMU      = np.asarray(param_macro_MH["paramMU"], dtype=float).reshape(-1)
-    Sigma2_0_cc  = float(param_macro_MH["Sigma2_0_cc"])
-    h_cc         = float(param_macro_MH["h_cc"])
-    phi_cc       = float(param_macro_MH["phi_cc"])
+    Sigma2_0_cc  = float(param_macro_MH["Sigma2_0_cc"])   # σ²_{z,0}: baseline variance (always 1.0)
+    h_cc         = float(param_macro_MH["h_cc"])           # h_z: regime volatility shifter (always 0.0)
+    phi_cc       = float(param_macro_MH["phi_cc"])         # φ_z: AR(1) persistence of z_t (eq. 14)
 
-    mu_0, mu_1 = paramMU[0], paramMU[1]
+    mu_0, mu_1 = float(paramMU[0]), float(paramMU[1])     # μ_0, μ_1: regime means (eq. 14)
 
-    # ------------------------------------------------------------------
-    # Dimensions
-    # ------------------------------------------------------------------
-    tau_aux    = np.array([1, 2, 3, 2, 1], dtype=float) / 3.0  # (5,) Mariano-Murasawa weights from eq. (17)
-    mDim       = N_m + N_q * tau + 6       # total state-vector dimension; 6 = tau+1 lags to capture AR(1) in e_{i,t}
-    nStates_Y  = N_m + N_q * tau           # total observable dimension (rows of H1)
-    nDim       = mDim
+    tau_aux = np.array([1, 2, 3, 2, 1], dtype=float) / 3.0  # (5,) Mariano–Murasawa weights (eq. 17)
+    mdim    = 6 + N_m + N_q * tau                            # total state-vector dimension
 
     # ------------------------------------------------------------------
-    # Selection matrices A_last and A_NotLast (equation IA.13)
+    # z-factor loadings H1_z — the first 6 columns of H1 (eq. IA.13)
     # ------------------------------------------------------------------
-    # A_last  selects all observables at quarter-end months (N_m monthly + N_q quarterly):
-    #   top block:    [eye(N_m),  zeros(N_m, N_q*tau)]   <- monthly rows
-    #   bottom block: [zeros(N_q, N_m),  kron(eye(N_q), tau_aux)]  <- quarterly aggregation (eq. IA.16)
-    #
-    # A_NotLast  selects only monthly observables at non-quarter-end months:
-    #   [eye(N_m),  zeros(N_m, N_q*tau)]
-
-    A_last = np.zeros((N_m + N_q, nStates_Y))
-    A_last[:N_m, :N_m] = np.eye(N_m)
-    # kron(eye(N_q), tau_aux) applies the Mariano-Murasawa weights (eq. 17) to each quarterly variable
-    kron_block = np.kron(np.eye(N_q), tau_aux.reshape(1, -1))  # (N_q, N_q*tau)
-    A_last[N_m:, N_m:] = kron_block
-
-    A_NotLast = np.zeros((N_m, nStates_Y))
-    A_NotLast[:N_m, :N_m] = np.eye(N_m)
-
-    A_select = {"A_last": A_last, "A_NotLast": A_NotLast}
-
-    # ------------------------------------------------------------------
-    # H0  (nStates_Y, 1) — intercept in measurement equation (IA.13); zero
-    # because the common factor z_t is already demeaned via F0_t
-    # ------------------------------------------------------------------
-    H0 = np.zeros((nStates_Y, 1))
-
-    # ------------------------------------------------------------------
-    # H1  (nStates_Y, nDim) — loadings in measurement equation (IA.13)
-    # ------------------------------------------------------------------
-
-    # ---- Monthly block: H1_macro_m  (N_m, nDim) ----
-    #
     # From eq. (IA.15): y*_{i,t+1} = γ_i z_{t+1} - γ_i ψ_i z_t + σ_i ε_{i,t+1}
     # This encodes the pre-whitened form of eq. (13) after applying ψ_i to remove
     # the AR(1) in e_{i,t} (eq. 15).
     #
-    # gamma_macro_m has length N_m+3:
-    #   gamma_f = gamma_macro_m[:-4]   shape (N_m-1,)  loadings for first N_m-1 variables
-    #   gamma_l = gamma_macro_m[-4:]   shape (4,)       4-lag loadings for last variable
+    # Monthly: gamma_macro_m has length N_m+3:
+    #   gamma_f = gamma_macro_m[:-4]  shape (N_m-1,)  scalar loadings for first N_m-1 variables
+    #   gamma_l = gamma_macro_m[-4:]  shape (4,)       4-lag loadings for last variable
     #
-    # For first N_m-1 variables, row i of the 6-column z-block is:
+    # For first N_m-1 variables, z-block row i is:
     #   [γ_i, -γ_i*ψ_i, 0, 0, 0, 0]   (from IA.15: coefficient on z_t and z_{t-1})
     #
-    # For last variable (weekly claims, aggregated to monthly with 4 lags):
+    # For last variable (weekly jobless claims, aggregated to monthly with 4 lags):
     #   [γ_0, γ_1-ψ*γ_0, γ_2-ψ*γ_1, γ_3-ψ*γ_2, -ψ*γ_3, 0]
+
+    gamma_f = gamma_macro_m[:-4]          # (N_m-1,) scalar loadings
+    gamma_l = gamma_macro_m[-4:]          # (4,) 4-lag loadings for last variable
+    psi_f   = psi_macro_m[:-1]            # (N_m-1,)
+    psi_l   = float(psi_macro_m[-1])
+
+    # (N_m-1, 6) z-block for first N_m-1 variables: [γ, -γψ, 0, 0, 0, 0]
+    H1_z_m_head = np.zeros((N_m - 1, 6))
+    H1_z_m_head[:, 0] =  gamma_f
+    H1_z_m_head[:, 1] = -gamma_f * psi_f
+
+    # (1, 6) z-block for last variable (4-lag pre-whitened form of eq. IA.15)
+    H1_z_m_last = np.array([[
+        gamma_l[0],
+        gamma_l[1] - psi_l * gamma_l[0],
+        gamma_l[2] - psi_l * gamma_l[1],
+        gamma_l[3] - psi_l * gamma_l[2],
+                   - psi_l * gamma_l[3],
+        0.0,
+    ]])
+
+    H1_z_NL = np.vstack([H1_z_m_head, H1_z_m_last])    # (N_m, 6) — z-loadings for monthly observables
+
+    # ---- Quarterly z-loadings: apply Mariano–Murasawa weights (eq. IA.16) ----
     #
-    # H1_macro_m = [H1_macro_m_aux1 | eye(N_m) | zeros(N_m, N_q*tau)]
-    # The identity block picks up e_{i,t} directly from the state vector.
+    # Encodes the quarterly aggregation (eq. 17 / IA.16) for each quarterly variable j.
+    # For the 5-row companion block of quarterly variable j:
+    #   mat_aux1[ii, ii]   = γ_j          (diagonal: z loadings at each monthly lag)
+    #   mat_aux1[jj, jj+1] = -γ_j * ψ_j  (superdiag: pre-whitened AR(1) correction)
+    # Applying tau_aux (1×5) @ (5×6) contracts the 5 monthly rows to one quarterly row.
 
-    gamma_f  = gamma_macro_m[:-4]   # (N_m-1,) scalar loadings
-    gamma_l  = gamma_macro_m[-4:]   # (4,) 4-lag loadings for last variable
-    psi_1_f  = psi_macro_m[:-1]     # (N_m-1,)
-    psi_1_l  = float(psi_macro_m[-1])
+    gamma_psi_q = -gamma_macro_q * psi_macro_q    # (N_q,)
+    H1_z_q = np.zeros((N_q, 6))
+    for j in range(N_q):
+        g  = float(gamma_macro_q[j])
+        gp = float(gamma_psi_q[j])
+        for ii in range(5):                # γ_j on diagonal (z loadings at each monthly lag)
+            H1_z_q[j, ii] += tau_aux[ii] * g
+        for jj in range(5):                # -γ_j*ψ_j on superdiagonal (pre-whitened AR(1) correction)
+            if jj + 1 < 6:
+                H1_z_q[j, jj + 1] += tau_aux[jj] * gp
 
-    # 6-column block for first N_m-1 variables: [γ, -γψ, 0, 0, 0, 0]
-    H1_f = np.column_stack([gamma_f, -gamma_f * psi_1_f])  # (N_m-1, 2)
-    H1_f_padded = np.hstack([H1_f, np.zeros((N_m - 1, 4))])  # (N_m-1, 6)
+    # Quarter-end months observe monthly + quarterly variables
+    H1_z_AL = np.vstack([H1_z_NL, H1_z_q])              # (N_m+N_q, 6)
 
-    # 6-column block for the last variable (4-lag pre-whitened form of eq. IA.15)
-    gamma_0_l = gamma_l[0]
-    gamma_1_l = gamma_l[1] - psi_1_l * gamma_l[0]
-    gamma_2_l = gamma_l[2] - psi_1_l * gamma_l[1]
-    gamma_3_l = gamma_l[3] - psi_1_l * gamma_l[2]
-    gamma_4_l =            - psi_1_l * gamma_l[3]
-    H1_l = np.array([[gamma_0_l, gamma_1_l, gamma_2_l, gamma_3_l, gamma_4_l, 0.0]])  # (1, 6)
-
-    H1_macro_m_aux1 = np.vstack([H1_f_padded, H1_l])    # (N_m, 6)   z-block
-    H1_macro_m_aux2 = np.eye(N_m)                       # (N_m, N_m) idiosyncratic block
-    H1_macro_m = np.hstack([
-        H1_macro_m_aux1,                                # columns 0-5:   z and its lags
-        H1_macro_m_aux2,                                # columns 6-17:  identity picks up e_{i,t}
-        np.zeros((N_m, N_q * tau)) ])                   # columns 18-32: zeros for quarterly states
-
-
-    # ---- Quarterly block: H1_macro_q  (N_q*tau, nDim) ----
+    # ------------------------------------------------------------------
+    # Idiosyncratic noise contribution per observable — Q_e_sel (eq. IA.13)
+    # ------------------------------------------------------------------
+    # At the prediction step, F1 rows 6+ are zero so Phat_ee = diag(SIG2_i)
+    # (the idiosyncratic prediction covariance resets to Q each step).
+    # H1_e selects exactly one idiosyncratic state per observable:
     #
-    # Encodes the Mariano-Murasawa aggregation (eq. 17 / IA.16) for quarterly variables.
-    # For each quarterly variable j, the pre-whitened aggregation of eq. (IA.15) gives
-    # a 5-row block (one row per monthly period within the quarter):
-    #   mat_aux1[i, i]   = γ_j                (diagonal:   coefficient on z_{t-i})
-    #   mat_aux1[i, i+1] = -γ_j * ψ_j         (superdiag:  coefficient on z_{t-i-1})
-    #
-    # H1_macro_q = [H1_macro_q_1 | zeros(N_q*5, N_m) | kron(eye(N_q), eye(5))]
+    # Monthly observation i:   H1_e[i, i]=1  → Q_e_sel_NL[i] = SIG2_m[i]
+    # Quarterly observation j at quarter-end: H1_e applies tau_aux weights
+    #   across 5 lag slots where only the first has non-zero Q (= SIG2_q[j]):
+    #   Q_e_sel_AL[N_m+j] = tau_aux[0]² * SIG2_q[j] = SIG2_q[j] / 9
+    Q_e_sel_NL = SIG2_i_macro_m.copy()                     # (N_m,)
 
-    gamma_psi = -gamma_macro_q * psi_macro_q  # (N_q,)
-    auxVar    = np.column_stack([gamma_macro_q, gamma_psi])  # (N_q, 2)
-
-    H1_macro_q_1_blocks = []
-    for index_q in range(N_q):
-        aux1     = auxVar[index_q]          # [γ_j, -γ_j*ψ_j]
-        mat_aux1 = np.zeros((5, 6))
-        for ii in range(5):                 # γ_j on diagonal (z loadings at each monthly lag)
-            mat_aux1[ii, ii]     = aux1[0]
-        for jj in range(5):                 # -γ_j*ψ_j on superdiagonal (pre-whitened AR(1) correction)
-            mat_aux1[jj, jj + 1] = aux1[1]
-        H1_macro_q_1_blocks.append(mat_aux1)
-
-    H1_macro_q_1 = np.vstack(H1_macro_q_1_blocks)                    # (N_q*5, 6)
-    H1_macro_q_2 = np.zeros((N_q * tau, N_m))                        # (N_q*5, N_m)
-    H1_macro_q_3 = np.kron(np.eye(N_q), np.eye(tau))                 # (N_q*5, N_q*5)
-
-    H1_macro_q = np.hstack([H1_macro_q_1, H1_macro_q_2, H1_macro_q_3])  # (N_q*5, nDim)
-
-    H1 = np.vstack([H1_macro_m, H1_macro_q])  # (nStates_Y, nDim)
+    Q_e_sel_q  = (tau_aux[0] ** 2) * SIG2_i_macro_q        # (N_q,) = SIG2_q / 9
+    Q_e_sel_AL = np.concatenate([SIG2_i_macro_m, Q_e_sel_q])  # (N_m+N_q,)
 
     # ------------------------------------------------------------------
-    # RR  (nStates_Y, nStates_Y) — measurement noise covariance in (IA.13)
-    # RR = 0 because both z_t and e_{i,t} are included as state variables,
-    # so the measurement equation is exact (no additional noise term).
+    # F0_t — time-varying intercept, z-factor row only (eq. IA.14)
     # ------------------------------------------------------------------
-    RR = np.zeros((nStates_Y, nStates_Y))
+    # From eq. (14): z_{t+1} = μ_z(S_{t+1}) + φ_z(z_t - μ_z(S_t)) + σ_z ε
+    # Rearranging: F0_t[0, t] = μ_z(S_{t+1}) - φ_z * μ_z(S_t)
+    # where μ_z(S_t) = μ_0 + μ_1 * S_t  (regime-dependent mean, eq. 14).
+    # All other rows of F0_t are zero: lag slots and idiosyncratic components
+    # have no intercept.
+    mu_aux  = mu_0 + mu_1 * s_t                     # (T,), μ_z(S_t) = μ_0 + μ_1*S_t
+    mu_t    = mu_aux[1:] - phi_cc * mu_aux[:-1]      # (T-1,), F0_t first row
 
-    # ------------------------------------------------------------------
-    # F0_t  (nDim, Tstar) — time-varying intercept in transition eq. (IA.14)
-    # ------------------------------------------------------------------
-    # From eq. (14): z_{t+1} = μ_z(S_{t+1}) + φ_z(z_t - μ_z(S_t)) + σ_z(S_{t+1})ε_{z,t+1}
-    # Rearranging for the state-space form: F0_t[0, t] = μ_z(S_{t+1}) - φ_z * μ_z(S_t)
-    # where μ_z(S_t) = μ_0 + μ_1 * S_t  (regime-dependent mean from eq. 14).
-    # All other rows of F0_t are zero: lag slots and idiosyncratic components have no intercept.
-
-    mu_aux = mu_0 + mu_1 * s_t                          # (T,), μ_z(S_t) = μ_0 + μ_1*S_t
-    mu_t   = mu_aux[1:] - phi_cc * mu_aux[:-1]          # (T-1,), F0_t first row: μ_z(S_{t+1}) - φ_z*μ_z(S_t)
-    F0_t_full = np.zeros((mDim, T - 1))
-    F0_t_full[0, :] = mu_t                              # only z's row is non-zero
+    Tstar  = T - 3
+    F0_z   = mu_t[-Tstar:]                           # (Tstar,) trimmed to align with Ystar
 
     # ------------------------------------------------------------------
-    # F1  (nDim, nDim) — transition matrix in eq. (IA.14)
-    # ------------------------------------------------------------------
-    # From eq. (14): z_{t+1} = ... + φ_z * (z_t - μ_z(S_t)) + ...
-    # In state-space form, after absorbing the mean into F0_t:
-    #   F1[0,0] = φ_z  (AR(1) persistence of the common factor)
-    #   F1[1:6, 0:5] = eye(5)  (companion form: shift z_{t-k} lags forward)
-    # Idiosyncratic AR(1) coefficients ψ_i are encoded in H1 and Ystar, not in F1.
-
-    F1 = np.zeros((nDim, nDim))
-    F1[0, 0] = phi_cc                          # AR(1) for z_t: φ_z in eq. (14)
-    F1[1 : tau + 1, 0 : tau] = np.eye(tau)    # lag shifts for z_{t-k}
-
-    # ------------------------------------------------------------------
-    # Q_t  (nDim, nDim, Tstar) — time-varying innovation covariance in (IA.14)
-    # ------------------------------------------------------------------
-    # From eq. (14): σ²_z(S_t) = σ²_{z,0}*(1 + h_z*S_t)  (regime-dependent volatility)
-    # Non-zero diagonal entries (0-indexed):
-    #   [0, 0, t]          = σ²_{z,0}*(1 + h_z*S_t)    common factor variance (eq. 14)
-    #   [6..6+N_m-1]       = σ²_{e,i}                   monthly idiosyncratic variance (eq. 15)
-    #   [6+N_m, 6+N_m+5, ...]  = σ²_{e,j}              quarterly idiosyncratic variance (first lag only)
-
-    Sigma2_t = Sigma2_0_cc * (1.0 + h_cc * s_t)  # (T,), σ²_z(S_t) from eq. (14)
-
-    Q_t_full = np.zeros((nDim, nDim, T))
-    Q_t_full[0, 0, :] = Sigma2_t
-
-    # Monthly idiosyncratic variances σ²_{e,i} from eq. (15)
-    for jjj, kk in enumerate(range(6, 6 + N_m)):
-        Q_t_full[kk, kk, :] = SIG2_i_macro_m[jjj]
-
-    # Quarterly idiosyncratic variances (first of the 5 lag slots per variable)
-    for jjj, kk in enumerate(range(6 + N_m, 6 + N_m + N_q * 5, 5)):
-        Q_t_full[kk, kk, :] = SIG2_i_macro_q[jjj]
-
-    # ------------------------------------------------------------------
-    # Pre-whiten data to form Ystar
+    # Pre-whiten data to form Ystar (eq. IA.15)
     # ------------------------------------------------------------------
     # From eq. (IA.15): y*_{i,t+1} = y_{i,t+1} - ψ_i * y_{i,t}
-    # This removes the AR(1) in e_{i,t} (eq. 15), yielding a regression with
-    # i.i.d. errors that admits a clean conjugate posterior in the Gibbs sampler.
+    # This removes the AR(1) in e_{i,t} (eq. 15), yielding i.i.d. errors.
     #
-    # Monthly:   y*_{i,t} = y_{i,t+1} - ψ_i * y_{i,t}         (lag-1 difference)
+    # Monthly:   y*_{i,t} = y_{i,t+1} - ψ_i * y_{i,t}    (lag-1 difference)
     #            Drop 2 extra rows so Ystar_m has Tstar = T-3 rows.
     #
-    # Quarterly: y*_{i,t} = y_{i,t+3} - ψ_i * y_{i,t}         (lag-3 = one quarter)
+    # Quarterly: y*_{i,t} = y_{i,t+3} - ψ_i * y_{i,t}    (lag-3 = one quarter)
     #            Already T-3 rows.
+    yy_star_m = yy_monthly[1:,  :] - psi_macro_m[np.newaxis, :] * yy_monthly[:-1,  :]   # (T-1, N_m)
+    yy_star_q = yy_quarterly[3:, :] - psi_macro_q[np.newaxis, :] * yy_quarterly[:-3, :]  # (T-3, N_q)
 
-    psi_1_m = psi_macro_m  # (N_m,)
-    psi_1_q = psi_macro_q  # (N_q,)
-    # (T-1, N_m)
-    yy_star_m = yy_monthly[1:, :] - psi_1_m[np.newaxis, :] * yy_monthly[:-1, :]
-    # (T-3, N_q)
-    yy_star_q = yy_quarterly[3:, :] - psi_1_q[np.newaxis, :] * yy_quarterly[:-3, :]
-
-    Ystar_m = yy_star_m[2:, :]   # (T-3, N_m), trim 2 rows to align with quarterly data
-    Ystar_q = yy_star_q           # (T-3, N_q)
-
-    Ystar = np.hstack([Ystar_m, Ystar_q])  # (T-3, N_m+N_q)
-
-    Tstar = Ystar.shape[0]   # T-3
+    Ystar_m = yy_star_m[2:, :]    # (Tstar, N_m) trim 2 rows to align with quarterly data
+    Ystar_q = yy_star_q            # (Tstar, N_q)
 
     # ------------------------------------------------------------------
-    # Trim F0_t and Q_t to last Tstar time slices
-    # (aligns with the pre-whitened Ystar which starts at t=3)
+    # NaN masks — True where the pre-whitened observation is valid (non-NaN)
     # ------------------------------------------------------------------
-    F0_t  = F0_t_full[:, -Tstar:]           # (nDim, Tstar)
-    Q_t   = Q_t_full[:, :, -Tstar:]         # (nDim, nDim, Tstar)
+    # NaN propagates from the raw data through the pre-whitening: y*_{i,t} is NaN
+    # if either y_{i,t+1} or y_{i,t} is NaN.  The mask is therefore determined
+    # by the fixed NaN structure of yy_monthly and yy_quarterly.
+    nan_mask_m = ~np.isnan(Ystar_m)    # (Tstar, N_m)  True = valid
+    nan_mask_q = ~np.isnan(Ystar_q)    # (Tstar, N_q)
 
-    return (
-        Ystar,
-        H0,
-        H1,
-        RR,
-        F0_t,
-        F1,
-        Q_t,
-        A_select,
-        Ystar_m,
-        Ystar_q,
-    )
+    return {
+        "F0_z"       : np.ascontiguousarray(F0_z,        dtype=float),
+        "H1_z_AL"    : np.ascontiguousarray(H1_z_AL,     dtype=float),   # (N_m+N_q, 6)
+        "H1_z_NL"    : np.ascontiguousarray(H1_z_NL,     dtype=float),   # (N_m,     6)
+        "Q_e_sel_AL" : np.ascontiguousarray(Q_e_sel_AL,  dtype=float),   # (N_m+N_q,)
+        "Q_e_sel_NL" : np.ascontiguousarray(Q_e_sel_NL,  dtype=float),   # (N_m,)
+        "Q_z"        : float(Sigma2_0_cc),                                # σ²_{z,0} = 1.0
+        "phi_cc"     : float(phi_cc),
+        "Ystar_m"    : np.ascontiguousarray(Ystar_m,     dtype=float),
+        "Ystar_q"    : np.ascontiguousarray(Ystar_q,     dtype=float),
+        "nan_mask_m" : np.ascontiguousarray(nan_mask_m),
+        "nan_mask_q" : np.ascontiguousarray(nan_mask_q),
+        "Tstar"      : int(Tstar),
+        "mdim"       : int(mdim),
+        "N_m"        : int(N_m),
+        "N_q"        : int(N_q),
+    }

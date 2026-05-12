@@ -279,12 +279,12 @@ The table below compares the posterior distribution from this replication (draws
 | Parameter | Description | 5% (repl.) | Median (repl.) | 95% (repl.) | 5% (paper) | Median (paper) | 95% (paper) |
 |-----------|-------------|:-:|:-:|:-:|:-:|:-:|:-:|
 | $\mu_0$ | Recession regime mean | 0.0052 | 0.0053 | 0.0055 | 0.0053 | 0.0065 | 0.0076 |
-| $\phi_z$ | Factor AR(1) persistence | 0.9684 | 0.9701 | 0.9717 | 0.9580 | 0.9700 | 0.9820 |
-| $\text{corr}_s$ | Regime correlation | −0.9449 | −0.9308 | −0.9031 | −0.9840 | −0.9550 | −0.9260 |
-| $\gamma_1$ | Loading, series 1 | 0.0087 | 0.0158 | 0.0222 | 0.0060 | 0.0090 | 0.0150 |
-| $\gamma_2$ | Loading, series 2 | 0.1537 | 0.1570 | 0.1595 | 0.0930 | 0.1490 | 0.1810 |
+| $\phi_z$ | Factor AR(1) persistence | 0.9683 | 0.9699 | 0.9716 | 0.9580 | 0.9700 | 0.9820 |
+| $\text{corr}_s$ | Regime correlation | −0.9864 | −0.9724 | −0.9315 | −0.9840 | −0.9550 | −0.9260 |
+| $\gamma_1$ | Loading, series 1 | 0.0052 | 0.0072 | 0.0133 | 0.0060 | 0.0090 | 0.0150 |
+| $\gamma_2$ | Loading, series 2 | 0.1466 | 0.1523 | 0.1586 | 0.0930 | 0.1490 | 0.1810 |
 
-The persistence parameter of the common growth factor $\phi_z$ and the regime correlation align closely with the paper's posterior. The factor AR persistence sits well within the paper's credible interval. The somewhat lower $\mu_0$ likely reflects minor differences in raw data vintages for the last-vintage series (Industrial Production, Real Private Income, Initial Claims) and the imperfect replication of the YoY equity returns series (correlation 0.82 with S&P 500), both of which affect the recession regime mean estimate.
+The persistence parameter of the common growth factor $\phi_z$ sits well within the paper's credible interval, and the regime correlation $\text{corr}_s$ now aligns closely with the paper's posterior across all three quantiles. The factor loading $\gamma_2$ is also consistent with the published range. The somewhat lower $\mu_0$ likely reflects minor differences in raw data vintages for the last-vintage series (Industrial Production, Real Private Income, Initial Claims) and the imperfect replication of the YoY equity returns series (correlation 0.82 with S&P 500), both of which affect the recession regime mean estimate.
 
 ---
 

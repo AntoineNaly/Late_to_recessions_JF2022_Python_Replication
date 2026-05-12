@@ -41,6 +41,14 @@ The output gamma_macro is rebuilt by concatenating per-variable draws:
   - Last monthly variable: contributes 4 values.
   Result for monthly:   length N_m-1 + 4 = N_m+3
   Result for quarterly: length N_q
+
+NaN handling
+------------
+NaN masking must happen before AR pre-whitening.  For quarterly variables
+only every third month is observed (non-quarter-end months are NaN); the
+NaN-free sub-sequence is therefore compressed first, then AR-whitened, so
+that consecutive non-NaN observations are treated as adjacent regardless of
+the calendar gap between them.  This matches the original MATLAB convention.
 """
 
 import numpy as np
@@ -120,7 +128,10 @@ def gibbs_sampling_macro(
     for selectVar_0 in range(nVars):     # loop over variables
         selectVar = selectVar_0 + 1      # 1-indexed for sub-functions
 
-        # NaN-safe data selection for this variable
+        # NaN-safe data selection for this variable.
+        # Compress to NaN-free sub-sequence before AR pre-whitening; this
+        # treats consecutive non-NaN observations as adjacent (required for
+        # quarterly data where non-quarter-end months are all NaN).
         yy_col  = yy[:, selectVar_0]
         mask    = ~np.isnan(yy_col)
         yy_sel  = yy_col[mask]
@@ -159,7 +170,7 @@ def gibbs_sampling_macro(
     for selectVar_0 in range(nVars):
         selectVar = selectVar_0 + 1
 
-        # NaN-safe data selection
+        # NaN-safe data selection (same compression before AR pre-whitening)
         yy_col = yy[:, selectVar_0]
         mask   = ~np.isnan(yy_col)
         yy_sel = yy_col[mask]
