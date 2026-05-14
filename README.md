@@ -291,7 +291,7 @@ Without the financial variables, expected returns fall less quickly at the onset
 
 ### 5.3 Posterior Parameter Estimates vs. Table IV
 
-All seven Table IV parameters belong to the **expected return model** and are printed to the console at the end of `main_ERF.py` in the block labelled `Posterior distribution (post burn-in draws 15,001–25,000)`. They are unrelated to the BC model parameters printed by `main_BC.py` (which reports `mu_0^z`, the regime mean of the latent growth factor `z_t` in standardised units, and `phi_z`, its AR(1) persistence — neither of which appears in Table IV). Parameter notation and prior distribution types follow the paper directly. *N* = Normal, *U* = Uniform, *IG* = Inverse-Gamma.
+The table below compares the posterior distribution from this replication (estimated in `main_ERF.py`, draws 15,001–25,000 post burn-in) against the published Table IV. Parameter notation and prior distribution types follow the paper directly. *N* = Normal, *U* = Uniform, *IG* = Inverse-Gamma.
 
 | Prior | Parameter | Description | 5% (repl.) | 50% (repl.) | 95% (repl.) | 5% (paper) | 50% (paper) | 95% (paper) |
 |:-----:|:---------:|-------------|:-----------:|:-----------:|:-----------:|:----------:|:-----------:|:-----------:|
@@ -303,7 +303,7 @@ All seven Table IV parameters belong to the **expected return model** and are pr
 | *IG* | $\sqrt{\text{Var}(r^e_t \mid S_t=\text{Rec.})}$ | Std dev of excess returns in recession | 0.0595 | 0.0640 | 0.0687 | 0.0430 | 0.0600 | 0.0720 |
 | *IG* | $\sqrt{\text{Var}(r^e_t \mid S_t=\text{Exp.})}$ | Std dev of excess returns in expansion | 0.0402 | 0.0402 | 0.0402 | 0.0389 | 0.0389 | 0.0389 |
 
-The replication matches the paper closely across all seven parameters. The AR(1) persistence $\rho$ and regime correlation $\rho_{\mu,r}$ sit well within the paper's credible intervals. The slopes $\phi(S_t=\text{Rec.})$ and $\phi(S_t=\text{Exp.})$ are consistent with the published ranges — the key sign pattern (recession slope much larger than expansion slope) is preserved. Return volatilities are also broadly in line, with the recession standard deviation somewhat above the paper's median, likely reflecting differences in the equity return series (S&P 500 YoY log return, correlation 0.82 with the paper's series) and the 1950–2019 vs 1965–2016 estimation samples. The lower $\mu_0$ and tighter $\rho$ credible interval are consistent with the longer sample period used here.
+The replication matches the paper closely across all seven parameters. The AR(1) persistence $\rho$, regime correlation $\rho_{\mu,r}$, slopes $\phi(S_t=\text{Rec.})$ and $\phi(S_t=\text{Exp.})$, and return volatilities all sit within or very close to the paper's credible intervals. The somewhat lower $\mu_0$ likely reflects the imperfect replication of the equity return series used as input to the expected return model — the closest public match found is the S&P 500 YoY log return, which correlates at 0.82 with the author's series.
 
 ---
 
