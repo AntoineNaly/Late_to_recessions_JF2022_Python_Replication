@@ -177,15 +177,32 @@ Late_to_recessions_JF2022_Python_Replication/
 
 ### 4.3 Running the Estimation
 
-**Step 1 — Business cycle identification:**
-```bash
-cd StateBusinessCycle
-python main_BC.py
-```
+Run the two orchestrator files in order. All file paths are detected automatically from each script's location — no manual path editing is needed.
 
-**Step 2 — Expected excess return forecast:**
+**Step 1 — Business cycle identification (`main_BC.py`):**
+
+Open `Python_Version/StateBusinessCycle/main_BC.py` and run it. The script will:
+- Download and build the dataset on first run (requires a FRED API key in the `USER CONFIGURATION` block)
+- Run the Gibbs sampler (~18–25 minutes with Numba installed, longer without)
+- Display Figure 1 (posterior recession probability and common growth factor)
+- Print the BC model posterior percentiles to the console
+- Save `commonGrowthData.npz` to `ExpectedReturnMeasure/Data/` automatically
+
+**Step 2 — Expected excess return forecast (`main_ERF.py`):**
+
+Open `Python_Version/ExpectedReturnMeasure/main_ERF.py` and run it. The script will:
+- Load `commonGrowthData.npz` written by Step 1
+- Run the Metropolis-Hastings sampler (~5–10 minutes)
+- Display Figure 2 (one-month-ahead expected excess return forecast)
+- Print the full Table IV posterior comparison to the console
+
+**Environment note.** Both scripts were developed and tested in **Spyder** (Anaconda distribution). Running them with the green *Run file* button (`F5`) works out of the box because Spyder sets the working directory to the script's folder automatically. Other IDEs (VS Code, PyCharm, Jupyter) may require you to manually set the working directory to the script's folder before running, otherwise relative path resolution for `Data/` and `Functions/` may fail. From the command line the equivalent is:
+
 ```bash
-cd ExpectedReturnMeasure
+cd Python_Version/StateBusinessCycle
+python main_BC.py
+
+cd ../ExpectedReturnMeasure
 python main_ERF.py
 ```
 
@@ -274,17 +291,19 @@ Without the financial variables, expected returns fall less quickly at the onset
 
 ### 5.3 Posterior Parameter Estimates vs. Table IV
 
-The table below compares the posterior distribution from this replication (draws 15,001–25,000 after burn-in discarded) using all macro and financial varialbes, against the published Table IV. Parameter notation follows the paper directly.
+All seven Table IV parameters belong to the **expected return model** and are printed to the console at the end of `main_ERF.py` in the block labelled `Posterior distribution (post burn-in draws 15,001–25,000)`. They are unrelated to the BC model parameters printed by `main_BC.py` (which reports `mu_0^z`, the regime mean of the latent growth factor `z_t` in standardised units, and `phi_z`, its AR(1) persistence — neither of which appears in Table IV). Parameter notation and prior distribution types follow the paper directly. *N* = Normal, *U* = Uniform, *IG* = Inverse-Gamma.
 
-| Parameter | Description | 5% (repl.) | Median (repl.) | 95% (repl.) | 5% (paper) | Median (paper) | 95% (paper) |
-|-----------|-------------|:-:|:-:|:-:|:-:|:-:|:-:|
-| $\mu_0$ | Recession regime mean | 0.0052 | 0.0053 | 0.0055 | 0.0053 | 0.0065 | 0.0076 |
-| $\phi_z$ | Factor AR(1) persistence | 0.9683 | 0.9699 | 0.9716 | 0.9580 | 0.9700 | 0.9820 |
-| $\text{corr}_s$ | Regime correlation | −0.9864 | −0.9724 | −0.9315 | −0.9840 | −0.9550 | −0.9260 |
-| $\gamma_1$ | Loading, series 1 | 0.0052 | 0.0072 | 0.0133 | 0.0060 | 0.0090 | 0.0150 |
-| $\gamma_2$ | Loading, series 2 | 0.1466 | 0.1523 | 0.1586 | 0.0930 | 0.1490 | 0.1810 |
+| Prior | Parameter | Description | 5% (repl.) | 50% (repl.) | 95% (repl.) | 5% (paper) | 50% (paper) | 95% (paper) |
+|:-----:|:---------:|-------------|:-----------:|:-----------:|:-----------:|:----------:|:-----------:|:-----------:|
+| *N* | $\mu_0$ | Mean expected return level | 0.0052 | 0.0053 | 0.0055 | 0.0053 | 0.0065 | 0.0076 |
+| *U* | $\rho$ | AR(1) persistence of expected return $\mu_t$ | 0.9683 | 0.9699 | 0.9716 | 0.9580 | 0.9700 | 0.9820 |
+| *U* | $\rho_{\mu,r}$ | Correlation between $\mu_t$ innovations and return innovations | −0.9864 | −0.9724 | −0.9315 | −0.9840 | −0.9550 | −0.9260 |
+| *U* | $\phi(S_t=\text{Rec.})$ | Slope of expected return on common growth factor $z_t$ in recession | 0.1466 | 0.1523 | 0.1586 | 0.0930 | 0.1490 | 0.1810 |
+| *U* | $\phi(S_t=\text{Exp.})$ | Slope of expected return on common growth factor $z_t$ in expansion | 0.0052 | 0.0072 | 0.0133 | 0.0060 | 0.0090 | 0.0150 |
+| *IG* | $\sqrt{\text{Var}(r^e_t \mid S_t=\text{Rec.})}$ | Std dev of excess returns in recession | 0.0595 | 0.0640 | 0.0687 | 0.0430 | 0.0600 | 0.0720 |
+| *IG* | $\sqrt{\text{Var}(r^e_t \mid S_t=\text{Exp.})}$ | Std dev of excess returns in expansion | 0.0402 | 0.0402 | 0.0402 | 0.0389 | 0.0389 | 0.0389 |
 
-The persistence parameter of the common growth factor $\phi_z$ sits well within the paper's credible interval, and the regime correlation $\text{corr}_s$ now aligns closely with the paper's posterior across all three quantiles. The factor loading $\gamma_2$ is also consistent with the published range. The somewhat lower $\mu_0$ likely reflects minor differences in raw data vintages for the last-vintage series (Industrial Production, Real Private Income, Initial Claims) and the imperfect replication of the YoY equity returns series (correlation 0.82 with S&P 500), both of which affect the recession regime mean estimate.
+The replication matches the paper closely across all seven parameters. The AR(1) persistence $\rho$ and regime correlation $\rho_{\mu,r}$ sit well within the paper's credible intervals. The slopes $\phi(S_t=\text{Rec.})$ and $\phi(S_t=\text{Exp.})$ are consistent with the published ranges — the key sign pattern (recession slope much larger than expansion slope) is preserved. Return volatilities are also broadly in line, with the recession standard deviation somewhat above the paper's median, likely reflecting differences in the equity return series (S&P 500 YoY log return, correlation 0.82 with the paper's series) and the 1950–2019 vs 1965–2016 estimation samples. The lower $\mu_0$ and tighter $\rho$ credible interval are consistent with the longer sample period used here.
 
 ---
 

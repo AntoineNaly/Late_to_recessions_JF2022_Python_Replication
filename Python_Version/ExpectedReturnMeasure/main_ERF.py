@@ -485,23 +485,47 @@ if __name__ == "__main__":
     parasim      = results["parasim"]
     burnin_diag  = results["burnin"]
     parasim_post = parasim[burnin_diag:, :]
-    param_names  = ["mu_0", "rho", "corr_s", "phi_1", "phi_2", "h", "sigma2_1"]
+
+    # Transform h and sigma2_1 to paper-comparable units (Table IV):
+    #   √Var(r^e | S_t=Exp.) = √sigma2_1            (col 6)
+    #   √Var(r^e | S_t=Rec.) = h × √sigma2_1        (col 5 × √col 6)
+    sqrt_sigma2_1 = np.sqrt(parasim_post[:, 6])         # (MM,)
+    sqrt_var_rec  = parasim_post[:, 5] * sqrt_sigma2_1  # (MM,)
+
+    # Assemble paper-comparable draw matrix (MM, 7)
+    parasim_print = np.column_stack([
+        parasim_post[:, 0],   # mu_0
+        parasim_post[:, 1],   # rho
+        parasim_post[:, 2],   # corr_s
+        parasim_post[:, 4],   # phi_2  = phi(S_t=Rec.)
+        parasim_post[:, 3],   # phi_1  = phi(S_t=Exp.)
+        sqrt_var_rec,          # sqrt_Var(Rec.) = h * sqrt(sigma2_1)
+        sqrt_sigma2_1,         # sqrt_Var(Exp.) = sqrt(sigma2_1)
+    ])
+
+    param_names = [
+        "mu_0", "rho", "corr_s",
+        "phi(Exp.)", "phi(Rec.)",
+        "sqrt_Var(Rec.)", "sqrt_Var(Exp.)",
+    ]
     table_iv = {
-        "mu_0":   (0.0053, 0.0065, 0.0076),
-        "rho":    (0.958,  0.970,  0.982),
-        "corr_s": (-0.984, -0.955, -0.926),
-        "phi_1":  (0.006,  0.009,  0.015),
-        "phi_2":  (0.093,  0.149,  0.181),
+        "mu_0":           (0.0053, 0.0065, 0.0076),
+        "rho":            (0.958,  0.970,  0.982),
+        "corr_s":         (-0.984, -0.955, -0.926),
+        "phi(Rec.)":      (0.093,  0.149,  0.181),
+        "phi(Exp.)":      (0.006,  0.009,  0.015),
+        "sqrt_Var(Rec.)": (0.043,  0.060,  0.072),
+        "sqrt_Var(Exp.)": (0.0389, 0.0389, 0.0389),
     }
     print(f"\nPosterior distribution "
           f"(post burn-in draws {burnin_diag}–{len(parasim)}):")
-    print(f"  {'param':12s}  {'5%':>10}  {'50%':>10}  {'95%':>10}   "
+    print(f"  {'param':16s}  {'5%':>10}  {'50%':>10}  {'95%':>10}   "
           f"(Table IV ref)")
-    for name, col in zip(param_names, parasim_post.T):
+    for name, col in zip(param_names, parasim_print.T):
         p5, p50, p95 = np.percentile(col, [5, 50, 95])
         ref = table_iv.get(name)
         ref_str = f"  ref: {ref}" if ref else ""
-        print(f"  {name:12s}  {p5:10.6f}  {p50:10.6f}  {p95:10.6f}{ref_str}")
+        print(f"  {name:16s}  {p5:10.6f}  {p50:10.6f}  {p95:10.6f}{ref_str}")
 
     # Log-likelihood and parameter traces
     fig, axes = plt.subplots(2, 1, figsize=(12, 6))

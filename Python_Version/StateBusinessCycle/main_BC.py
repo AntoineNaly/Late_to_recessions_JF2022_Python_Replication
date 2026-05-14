@@ -94,6 +94,8 @@ _ER_DATA_DIR = SCRIPT_DIR.parent / "ExpectedReturnMeasure" / "Data"
 # ---------------------------------------------------------------------------
 # Imports — all from Functions sub-package
 # ---------------------------------------------------------------------------
+#from Functions.data_loader_bc           import load_macro_data
+#from Functions.priors                    import build_priors
 from Functions.specifyPriorsGibbsMacro  import specify_priors_gibbs_macro
 from Functions.initialValuesMacro       import initial_values_macro
 from Functions.generate_xt_sv           import generate_xt_sv
@@ -111,7 +113,7 @@ from Functions.utils                    import ensure_rng
 
 # requirements: pip install fredapi yfinance scipy openpyxl pandas numpy requests
 
-FRED_API_KEY             = "YOUR_FRED_API_KEY_HERE"
+FRED_API_KEY             = "YOUR_FRED_API_KEY"
 # Free at: https://fred.stlouisfed.org/docs/api/api_key.html
 
 MODE = "replicate"
@@ -684,21 +686,34 @@ def run_state_business_cycle(
     # 8. Print posterior percentiles (Table IV comparison)
     # -----------------------------------------------------------------------
     if verbose:
-        Gamma_arr = np.stack(store_Gamma_tot, axis=1)  # (N_gamma, MM)
-        PHI_arr   = np.stack(store_PHI_tot,   axis=1)  # (1, MM)
-        MU_arr    = np.stack(store_MU_G_tot,  axis=1)  # (2, MM)
-        pq_arr    = np.stack(store_probState, axis=1)  # (2, MM)
+        PHI_arr = np.stack(store_PHI_tot,   axis=1)  # (1, MM)  — φ_z draws
+        MU_arr  = np.stack(store_MU_G_tot,  axis=1)  # (2, MM)  — [μ_0^z, μ_1^z] draws
+        pq_arr  = np.stack(store_probState, axis=1)  # (2, MM)  — [p, q] draws
 
-        pq_mean = pq_arr.mean(axis=1)
-        print("\nPosterior means (post burn-in):")
-        print(f"  phi_cc = {PHI_arr.mean():.4f}")
-        print(f"  mu0    = {MU_arr[0].mean():.4f}")
-        print(f"  mu1    = {MU_arr[1].mean():.4f}")
-        print(f"  p (stay recession) = {pq_mean[0]:.4f}")
-        print(f"  q (stay expansion) = {pq_mean[1]:.4f}")
+        mu0z_pct = np.percentile(MU_arr[0],  [5, 50, 95])  # regime mean of z_t in recession
+        mu1z_pct = np.percentile(MU_arr[1],  [5, 50, 95])  # regime mean increment (expansion − recession)
+        phiz_pct = np.percentile(PHI_arr[0], [5, 50, 95])  # AR(1) persistence of z_t (eq. 14)
+        p_pct    = np.percentile(pq_arr[0],  [5, 50, 95])  # P(stay in recession) = 1 - A1TT
+        q_pct    = np.percentile(pq_arr[1],  [5, 50, 95])  # P(stay in expansion) = 1 - B1TT
 
-        print("\nGamma[0] percentiles [5, 50, 95]:",
-              np.percentile(Gamma_arr[0], [5, 50, 95]).round(4))
+        # These are the BC state-space model parameters (eq. 14).
+        # They are NOT the Table IV parameters and do NOT appear in the README
+        # comparison table.  Table IV parameters (mu_0, rho, corr_s, phi_rec,
+        # phi_exp, sqrt_Var_rec, sqrt_Var_exp) are all estimated in main_ERF.py
+        # and printed there under "Posterior distribution (post burn-in draws ...)".
+        # In particular: mu_0^z here is the regime mean of the latent factor z_t
+        # in standardised units (~-2.3 in recession), which is a completely
+        # different quantity from the expected return model's mu_0 (~0.005).
+        print(f"\n--- BC state-space model posterior "
+              f"(post burn-in draws {n0+1:,}–{n0+mm:,}) ---")
+        print("  [These are eq. (14) parameters, NOT the Table IV parameters]")
+        print(f"  {'param':<26} {'5%':>10} {'50%':>10} {'95%':>10}")
+        print(f"  {'mu_0^z (recession mean z_t)':<26} {mu0z_pct[0]:>10.4f} {mu0z_pct[1]:>10.4f} {mu0z_pct[2]:>10.4f}")
+        print(f"  {'mu_1^z (expansion increment)':<26} {mu1z_pct[0]:>10.4f} {mu1z_pct[1]:>10.4f} {mu1z_pct[2]:>10.4f}")
+        print(f"  {'phi_z (AR persistence z_t)':<26} {phiz_pct[0]:>10.4f} {phiz_pct[1]:>10.4f} {phiz_pct[2]:>10.4f}")
+        print(f"  {'p (stay in recession)':<26} {p_pct[0]:>10.4f} {p_pct[1]:>10.4f} {p_pct[2]:>10.4f}")
+        print(f"  {'q (stay in expansion)':<26} {q_pct[0]:>10.4f} {q_pct[1]:>10.4f} {q_pct[2]:>10.4f}")
+        print("  --> Run main_ERF.py next to get Table IV posterior estimates.")
 
     if verbose:
         print("\n StateBusinessCycle completed.")
