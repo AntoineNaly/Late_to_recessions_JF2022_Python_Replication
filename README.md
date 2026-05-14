@@ -131,48 +131,47 @@ Python 3.9+ is recommended. A free FRED API key is required (register at [fred.s
 ```
 Late_to_recessions_JF2022_Python_Replication/
 ├── Original_Paper/
-│   ├── Matlab code/                       ← Original MATLAB code provided by the author
+│   ├── Matlab code/                        ← Original MATLAB code provided by the author
 │   ├── late to recession internet-appendix.pdf
 │   └── ssrn_id3873755_code2626202.pdf
 ├── Python_Version/
 │   ├── README.md
 │   ├── StateBusinessCycle/
-│   │   ├── main_BC.py                     ← Main orchestrator: runs full Gibbs sampler and saves output
+│   │   ├── main_BC.py                      ← Main orchestrator: runs full Gibbs sampler and saves output
 │   │   ├── Data/
 │   │   │   ├── dataMacroFinance_1950_2019_updated.mat  ← Author's original MATLAB dataset
-│   │   │   ├── hMvMd.xlsx                 ← Philly Fed aggregate weekly hours (download separately)
+│   │   │   ├── hMvMd.xlsx                  ← Philly Fed aggregate weekly hours (download separately)
 │   │   │   └── GC_jf2022_dataset_replicate.pkl        ← Built by build_macro_dataset.py
 │   │   └── Functions/
-│   │       ├── build_macro_dataset.py     ← Downloads all 15 series, applies corrections, saves pkl
-│   │       ├── initialValuesMacro.py      ← OLS-based starting values for all Gibbs parameters
-│   │       ├── generate_xt_sv.py          ← Kalman filter + forward sampling (FFFS) for z_t
-│   │       ├── hamiltonfilter_xt_sv.py    ← Hamilton forward filter + Carter-Kohn backward draw for S_t
-│   │       ├── get_coefficients_sv.py     ← Builds state-space matrices (H, F, Q) from parameters
-│   │       ├── gibbSamplingMacro.py       ← One Gibbs sweep: draws (ψ_i, σ²_{e,i}) then γ_i for each series
-│   │       ├── generate_gamma_macro.py    ← Draws factor loadings γ_i from Normal posterior
+│   │       ├── build_macro_dataset.py      ← Downloads all 15 series, applies corrections, saves pkl
+│   │       ├── initialValuesMacro.py       ← OLS-based starting values for all Gibbs parameters
+│   │       ├── generate_xt_sv.py           ← Kalman filter + forward sampling (FFFS) for z_t
+│   │       ├── hamiltonfilter_xt_sv.py     ← Hamilton forward filter + Carter-Kohn backward draw for S_t
+│   │       ├── get_coefficients_sv.py      ← Builds state-space matrices (H, F, Q) from parameters
+│   │       ├── gibbSamplingMacro.py        ← One Gibbs sweep: draws (ψ_i, σ²_{e,i}) then γ_i for each series
+│   │       ├── generate_gamma_macro.py     ← Draws factor loadings γ_i from Normal posterior
 │   │       ├── generate_PSIandSIG_macro.py ← Draws idiosyncratic AR coefficients ψ_i and variances σ²_{e,i}
-│   │       ├── generate_MU_PHI_sv.py      ← Draws common factor parameters φ_z, μ_0, μ_1 via GLS
-│   │       ├── generate_ChangeState.py    ← Counts Markov transition events for Beta posterior draws
-│   │       ├── specifyPriorsGibbsMacro.py ← Prior hyperparameters matching Table IV of the paper
-│   │       ├── bingen.py                  ← Binary random draw utility
-│   │       ├── data_loader_bc.py          ← Loads and validates pkl data for main_BC.py
-│   │       └── utils.py                  ← Shared numerical utilities (Cholesky, RNG, symmetrisation)
+│   │       ├── generate_MU_PHI_sv.py       ← Draws common factor parameters φ_z, μ_0, μ_1 via GLS
+│   │       ├── generate_ChangeState.py     ← Counts Markov transition events for Beta posterior draws
+│   │       ├── specifyPriorsGibbsMacro.py  ← Prior hyperparameters matching Table IV of the paper
+│   │       ├── bingen.py                   ← Binary random draw utility
+│   │       └── utils.py                    ← Shared numerical utilities (Cholesky, RNG, symmetrisation)
 │   └── ExpectedReturnMeasure/
-│       ├── main_ERF.py                    ← Main orchestrator: MH sampler for excess return parameters
+│       ├── main_ERF.py                     ← Main orchestrator: MH sampler for excess return parameters
 │       ├── Data/
-│       │   ├── commonGrowthData.npz       ← Business cycle output from main_BC.py
-│       │   ├── returnData.csv             ← Excess equity return series
-│       │   └── para.txt                   ← Initial parameter values for MH sampler [μ_l, ρ_l, corr_s, φ_1, φ_2, h, σ²_1]
+│       │   ├── commonGrowthData.npz        ← Business cycle output from main_BC.py
+│       │   ├── returnData.csv              ← Excess equity return series
+│       │   └── para.txt                    ← Initial parameter values for MH sampler [μ_l, ρ_l, corr_s, φ_1, φ_2, h, σ²_1]
 │       └── Functions/
-│           ├── data_loader_er.py          ← Loads business cycle output and return data for main_ERF.py
-│           ├── coefficients.py            ← Builds state-space matrices for the return model
-│           ├── evalmod.py                 ← Single-regime Kalman filter + Rauch-Tung-Striebel simulation smoother
-│           ├── evalmodMix.py              ← Mixture likelihood combining expansion and recession regimes
-│           ├── objfcnMixStates.py         ← Log posterior objective function for MH sampler
-│           ├── priors_er.py               ← Prior distributions and bounds for return model parameters
-│           ├── recessionplot.py           ← Utility to overlay NBER recession shading on plots
-│           └── utils.py                  ← Shared numerical utilities (Lyapunov solver, Cholesky, RNG)
-└── README.md                              ← This file (repository root)
+│           ├── data_loader_er.py           ← Loads business cycle output and return data for main_ERF.py
+│           ├── coefficients.py             ← Builds state-space matrices for the return model
+│           ├── evalmod.py                  ← Single-regime Kalman filter + Rauch-Tung-Striebel simulation smoother
+│           ├── evalmodMix.py               ← Mixture likelihood combining expansion and recession regimes
+│           ├── objfcnMixStates.py          ← Log posterior objective function for MH sampler
+│           ├── priors_er.py                ← Prior distributions and bounds for return model parameters
+│           ├── recessionplot.py            ← Utility to overlay NBER recession shading on plots
+│           └── utils.py                    ← Shared numerical utilities (Lyapunov solver, Cholesky, RNG)
+└── README.md                               ← This file (repository root)
 ```
 
 ### 4.3 Running the Estimation
